@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .hidden {
+            display: none;
+        }
+        .loading {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Login Section -->
+    <div id="loginSection" class="min-h-screen flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+            <h1 class="text-2xl font-bold text-center mb-6">Library Management System</h1>
+            <div class="space-y-4">
+                <input type="text" id="username" placeholder="Username" class="w-full p-2 border rounded">
+                <input type="password" id="password" placeholder="Password" class="w-full p-2 border rounded">
+                <div class="flex space-x-4">
+                    <button onclick="login('user')" class="w-1/2 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">User Login</button>
+                    <button onclick="login('admin')" class="w-1/2 bg-green-500 text-white p-2 rounded hover:bg-green-600">Admin Login</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="hidden min-h-screen">
+        <!-- Navigation -->
+        <nav class="bg-blue-600 text-white p-4">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-xl font-bold">Library Management System</h1>
+                <div class="space-x-4">
+                    <span id="userType" class="font-medium"></span>
+                    <button onclick="logout()" class="bg-red-500 px-4 py-2 rounded hover:bg-red-600">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Sidebar and Content -->
+        <div class="flex min-h-screen">
+            <!-- Sidebar -->
+            <div class="w-64 bg-gray-800 text-white p-4">
+                <div class="space-y-2">
+                    <button onclick="showSection('transactions')" class="w-full text-left p-2 hover:bg-gray-700 rounded">Transactions</button>
+                    <button onclick="showSection('reports')" class="w-full text-left p-2 hover:bg-gray-700 rounded">Reports</button>
+                    <button id="maintenanceBtn" onclick="showSection('maintenance')" class="hidden w-full text-left p-2 hover:bg-gray-700 rounded">Maintenance</button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 p-8">
+                <!-- Transactions Section -->
+                <div id="transactions" class="hidden">
+                    <h2 class="text-2xl font-bold mb-6">Transactions</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <button onclick="showTransactionForm('bookAvailable')" class="p-4 bg-white rounded-lg shadow hover:shadow-lg">
+                            <h3 class="text-lg font-semibold">Book Available</h3>
+                        </button>
+                        <button onclick="showTransactionForm('bookIssue')" class="p-4 bg-white rounded-lg shadow hover:shadow-lg">
+                            <h3 class="text-lg font-semibold">Book Issue</h3>
+                        </button>
+                        <button onclick="showTransactionForm('returnBook')" class="p-4 bg-white rounded-lg shadow hover:shadow-lg">
+                            <h3 class="text-lg font-semibold">Return Book</h3>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reports Section -->
+                <div id="reports" class="hidden">
+                    <h2 class="text-2xl font-bold mb-6">Reports</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <button onclick="generateReport('masterBooks')" class="p-4 bg-white rounded-lg shadow hover:shadow-lg">
+                            <h3 class="text-lg font-semibold">Master List of Books</h3>
+                        </button>
+                        <button onclick="generateReport('activeIssues')" class="p-4 bg-white rounded-lg shadow hover:shadow-lg">
+                            <h3 class="text-lg font-semibold">Active Issues</h3>
+                        </button>
+                        <button onclick="generateReport('overdueReturns')" class="p-4 bg-white rounded-lg shadow hover:shadow-lg">
+                            <h3 class="text-lg font-semibold">Overdue Returns</h3>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Maintenance Section -->
+                <div id="maintenance" class="hidden">
+                    <h2 class="text-2xl font-bold mb-6">Maintenance</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <button onclick="showMaintenanceForm('addBook')" class="p-4 bg-white rounded-lg shadow hover:shadow-lg">
+                            <h3 class="text-lg font-semibold">Add Book</h3>
+                        </button>
+                        <button onclick="showMaintenanceForm('updateBook')" class="p-4 bg-white rounded-lg shadow hover:shadow-lg">
+                            <h3 class="text-lg font-semibold">Update Book</h3>
+                        </button>
+                        <button onclick="showMaintenanceForm('userManagement')" class="p-4 bg-white rounded-lg shadow hover:shadow-lg">
+                            <h3 class="text-lg font-semibold">User Management</h3>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Forms will be dynamically inserted here -->
+                <div id="formContainer" class="hidden mt-8"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentUser = null;
+        let currentUserType = null;
+
+        // Initialize database
+        const initializeDB = async () => {
+            const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/db', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer YiqRjE7aRvNqTKxyYgvWqLVQVJK2',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'create',
+                    userId: 'library-system',
+                    appSlug: 'library-management',
+                    table: 'users'
+                })
+            });
+            return response.json();
+        };
+
+        // Login function
+        const login = async (type) => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                alert('Please enter both username and password');
+                return;
+            }
+
+            // In a real application, this would validate against the database
+            currentUser = username;
+            currentUserType = type;
+
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('userType').textContent = `Logged in as ${type}`;
+
+            if (type === 'admin') {
+                document.getElementById('maintenanceBtn').classList.remove('hidden');
+            }
+
+            showSection('transactions');
+        };
+
+        // Logout function
+        const logout = () => {
+            currentUser = null;
+            currentUserType = null;
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        };
+
+        // Show section function
+        const showSection = (section) => {
+            ['transactions', 'reports', 'maintenance'].forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById('formContainer').classList.add('hidden');
+            document.getElementById(section).classList.remove('hidden');
+        };
+
+        // Show transaction form function
+        const showTransactionForm = (formType) => {
+            const formContainer = document.getElementById('formContainer');
+            formContainer.classList.remove('hidden');
+            
+            let formHTML = '';
+            switch(formType) {
+                case 'bookAvailable':
+                    formHTML = `
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-xl font-bold mb-4">Check Book Availability</h3>
+                            <form onsubmit="handleBookAvailability(event)" class="space-y-4">
+                                <input type="text" placeholder="Book Name" class="w-full p-2 border rounded">
+                                <input type="text" placeholder="Author" class="w-full p-2 border rounded">
+                                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Search</button>
+                            </form>
+                        </div>
+                    `;
+                    break;
+                // Add other form cases here
+            }
+            formContainer.innerHTML = formHTML;
+        };
+
+        // Initialize the application
+        window.onload = () => {
+            initializeDB();
+        };
+    </script>
+</body>
+</html>
